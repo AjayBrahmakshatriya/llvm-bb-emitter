@@ -89,6 +89,8 @@ MCStreamer::MCStreamer(MCContext &Ctx)
     : Context(Ctx), CurrentWinFrameInfo(nullptr),
       UseAssemblerInfoForParsing(false) {
   SectionStack.push_back(std::pair<MCSectionSubPair, MCSectionSubPair>());
+  bb_OS = NULL;
+  bb_OS_stream = NULL;
 }
 
 MCStreamer::~MCStreamer() {}

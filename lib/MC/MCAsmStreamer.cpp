@@ -34,7 +34,8 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/TargetRegistry.h"
 #include <cctype>
-
+#include "llvm/MC/MCInstrDesc.h"
+#include "llvm/MC/MCInstrInfo.h"
 using namespace llvm;
 
 namespace {
@@ -1849,6 +1850,45 @@ void MCAsmStreamer::EmitInstruction(const MCInst &Inst,
     GetCommentOS() << "\n";
 
   EmitEOL();
+  if (bb_OS !=NULL ) {
+      if(getTargetStreamer())
+          getTargetStreamer()->prettyPrintAsm(*InstPrinter, *bb_OS, Inst, STI);
+      else
+          InstPrinter->printInst(&Inst, *bb_OS, "", STI);
+      (*bb_OS) << "\n";
+      (*bb_OS) << Inst.getOpcode() << "\t";
+      
+    MCInstrDesc MD = InstPrinter->getMII().get(Inst.getOpcode());
+    const MCPhysReg *ImpUses = MD.getImplicitUses();
+    const MCPhysReg *ImpDefs = MD.getImplicitDefs(); 
+    for (unsigned j = 0; j < MD.NumDefs; j++) {
+      MCOperand op = Inst.getOperand(j);
+      if (op.isReg() && op.getReg()) {
+          InstPrinter->printRegName(*bb_OS, op.getReg());
+          *bb_OS << ","; 
+      }
+    }
+    *bb_OS << "\t";
+    for (unsigned j = MD.NumDefs; j < Inst.getNumOperands(); j++) {
+      MCOperand op = Inst.getOperand(j);
+      if (op.isReg() && op.getReg()) {
+        InstPrinter->printRegName(*bb_OS, op.getReg());
+        *bb_OS << ",";
+      }
+    }
+    *bb_OS << "\t";
+    for (unsigned j = 0; j < MD.getNumImplicitDefs(); j++) {
+      InstPrinter->printRegName(*bb_OS, ImpDefs[j]);
+      *bb_OS << ",";
+    }
+    *bb_OS << "\t";
+    for (unsigned j = 0; j < MD.getNumImplicitUses(); j++) {
+      InstPrinter->printRegName(*bb_OS, ImpUses[j]);
+      *bb_OS << ",";
+    }
+    *bb_OS << "\n";
+  } 
+  CommentToEmit.clear();
 }
 
 void MCAsmStreamer::EmitBundleAlignMode(unsigned AlignPow2) {

@@ -99,7 +99,8 @@ public:
   format_object<int64_t> formatImm(int64_t Value) const {
     return PrintImmHex ? formatHex(Value) : formatDec(Value);
   }
-
+  
+  const MCInstrInfo & getMII(void) {return MII;}
   /// Utility functions to print decimal/hexadecimal values.
   format_object<int64_t> formatDec(int64_t Value) const;
   format_object<int64_t> formatHex(int64_t Value) const;

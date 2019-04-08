@@ -38,7 +38,17 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MachineValueType.h"
 #include "llvm/Support/TargetRegistry.h"
+
+#include <fstream>
+#include <sstream>
+#include "llvm/Support/raw_os_ostream.h"
+
 using namespace llvm;
+
+static cl::opt<std::string> BBOutputFilename("bb-filename", cl::desc("File to output BBs in"), cl::value_desc("bb-filename"));
+static cl::opt<std::string> RawBBOutputFilename("raw-bb-filename", cl::desc("File to output RAW BBs in"), cl::value_desc("raw-bb-filename"));
+
+std::ofstream * raw_bb_file_stream;
 
 X86AsmPrinter::X86AsmPrinter(TargetMachine &TM,
                              std::unique_ptr<MCStreamer> Streamer)
@@ -547,6 +557,20 @@ bool X86AsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
 }
 
 void X86AsmPrinter::EmitStartOfAsmFile(Module &M) {
+
+  if (BBOutputFilename != "") {
+    std::ofstream * file_stream = new std::ofstream();
+    file_stream->open(BBOutputFilename, std::ofstream::out | std::ofstream::app);
+    raw_ostream * bb_output_stream = new raw_os_ostream(*file_stream);
+    OutStreamer->bb_OS = bb_output_stream;
+    OutStreamer->bb_OS_stream = file_stream;
+  }
+  if (RawBBOutputFilename != "") {
+    std::ofstream * file_stream = new std::ofstream();
+    file_stream->open(RawBBOutputFilename, std::ofstream::out | std::ofstream::app);
+    raw_bb_file_stream = file_stream;
+  }
+
   const Triple &TT = TM.getTargetTriple();
 
   if (TT.isOSBinFormatELF()) {
@@ -713,6 +737,25 @@ void X86AsmPrinter::EmitEndOfAsmFile(Module &M) {
     emitStackMaps(SM);
     FM.serializeToFaultMapSection();
   }
+  if (OutStreamer->bb_OS) {
+      OutStreamer->bb_OS->flush();
+      OutStreamer->bb_OS_stream->flush();
+      OutStreamer->bb_OS_stream->close();
+      delete OutStreamer->bb_OS;
+      delete OutStreamer->bb_OS_stream;
+  }
+  if (raw_bb_file_stream) {
+      raw_bb_file_stream->flush();
+      raw_bb_file_stream->close();
+      delete raw_bb_file_stream;
+  }
+}
+
+
+void X86AsmPrinter::EmitBasicBlockStart(const MachineBasicBlock &MBB) const {
+    AsmPrinter::EmitBasicBlockStart(MBB);
+    if (OutStreamer->bb_OS)
+        *(OutStreamer->bb_OS) << "--------\n";
 }
 
 //===----------------------------------------------------------------------===//

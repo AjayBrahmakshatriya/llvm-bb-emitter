@@ -16,11 +16,14 @@
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/Target/TargetMachine.h"
 
+
+#include <fstream>
 // Implemented in X86MCInstLower.cpp
 namespace {
   class X86MCInstLower;
 }
 
+extern std::ofstream * raw_bb_file_stream;
 namespace llvm {
 class MCStreamer;
 class MCSymbol;
@@ -120,8 +123,11 @@ public:
   void EmitBasicBlockEnd(const MachineBasicBlock &MBB) override {
     AsmPrinter::EmitBasicBlockEnd(MBB);
     SMShadowTracker.emitShadowPadding(*OutStreamer, getSubtargetInfo());
+    if (raw_bb_file_stream)
+        (*raw_bb_file_stream) << "\n";
   }
 
+  void EmitBasicBlockStart(const MachineBasicBlock &MBB) const override; 
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        unsigned AsmVariant, const char *ExtraCode,
                        raw_ostream &OS) override;

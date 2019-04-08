@@ -30,6 +30,9 @@
 #include <cstdint>
 #include <cstdlib>
 
+
+#include <fstream>
+extern std::ofstream * raw_bb_file_stream;
 using namespace llvm;
 
 #define DEBUG_TYPE "mccodeemitter"
@@ -137,6 +140,9 @@ public:
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
+  void encodeInstruction_real(const MCInst &MI, raw_ostream &OS,
+                         SmallVectorImpl<MCFixup> &Fixups,
+                         const MCSubtargetInfo &STI) const;
 
   void EmitVEXOpcodePrefix(uint64_t TSFlags, unsigned &CurByte, int MemOperand,
                            const MCInst &MI, const MCInstrDesc &Desc,
@@ -1188,8 +1194,29 @@ bool X86MCCodeEmitter::emitOpcodePrefix(uint64_t TSFlags, unsigned &CurByte,
   return Ret;
 }
 
+
+
 void X86MCCodeEmitter::
 encodeInstruction(const MCInst &MI, raw_ostream &OS,
+                  SmallVectorImpl<MCFixup> &Fixups,
+                  const MCSubtargetInfo &STI) const {
+	static bool first = true;
+	SmallString<128> Code;
+	raw_svector_ostream VecOS(Code);	
+	encodeInstruction_real(MI, VecOS, Fixups, STI);
+        
+	if (!first && raw_bb_file_stream)
+		for (auto ch: VecOS.str()) {
+			char str[3];
+			sprintf(str, "%02x", (unsigned char)ch);
+			*raw_bb_file_stream << str;
+		}
+	first = false;
+	OS << VecOS.str();
+}
+
+void X86MCCodeEmitter::
+encodeInstruction_real(const MCInst &MI, raw_ostream &OS,
                   SmallVectorImpl<MCFixup> &Fixups,
                   const MCSubtargetInfo &STI) const {
   unsigned Opcode = MI.getOpcode();

@@ -232,6 +232,10 @@ protected:
   bool checkCVLocSection(unsigned FuncId, unsigned FileNo, SMLoc Loc);
 
 public:
+
+  raw_ostream *bb_OS;
+  std::ofstream *bb_OS_stream;
+
   MCStreamer(const MCStreamer &) = delete;
   MCStreamer &operator=(const MCStreamer &) = delete;
   virtual ~MCStreamer();
